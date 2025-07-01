@@ -49,15 +49,42 @@ def process_frame(frame):
 
     face_names = []
     for face_encoding in face_encodings:
-        # See if the face is a match for the known face(s)
-        matches = face_recognition.compare_faces(known_face_encodings, face_encoding)
-        name = "Unknown"
-
-        # Use the known face with the smallest distance to the new face
+        # Calcular distancias a todos los rostros conocidos
         face_distances = face_recognition.face_distance(known_face_encodings, face_encoding)
+        
+        # Encontrar la distancia mínima
+        min_distance = np.min(face_distances)
         best_match_index = np.argmin(face_distances)
-        if matches[best_match_index]:
-            name = known_face_names[best_match_index]
+        
+        name = "Unknown"
+        # Tolerancia más estricta para reducir falsos positivos
+        tolerance = 0.45  # Más estricto que el default (0.6)
+        
+        # Solo asignar nombre si la distancia está dentro de la tolerancia
+        if min_distance <= tolerance:
+            # Verificación adicional: comprobar que hay múltiples encodings que coinciden
+            matches = face_recognition.compare_faces(known_face_encodings, face_encoding, tolerance=tolerance)
+            
+            if matches[best_match_index]:
+                candidate_name = known_face_names[best_match_index]
+                
+                # Contar cuántos encodings de esta persona coinciden
+                same_person_indices = [i for i, n in enumerate(known_face_names) if n == candidate_name]
+                same_person_matches = [matches[i] for i in same_person_indices]
+                match_ratio = sum(same_person_matches) / len(same_person_matches)
+                
+                # Requerir que al menos 50% de los encodings de la persona coincidan
+                if match_ratio >= 0.5:
+                    name = candidate_name
+                    confidence = (1 - min_distance) * 100  # Convertir a porcentaje de confianza
+                    print(f"[DEBUG] Recognized: {name} (Confidence: {confidence:.1f}%, Distance: {min_distance:.3f}, Ratio: {match_ratio:.2f})")
+                else:
+                    print(f"[DEBUG] Rejected: {candidate_name} (Ratio too low: {match_ratio:.2f})")
+            else:
+                print(f"[DEBUG] Rejected by tolerance (Distance: {min_distance:.3f} > {tolerance})")
+        else:
+            print(f"[DEBUG] Unknown face (Min distance: {min_distance:.3f} > {tolerance})")
+        
         face_names.append(name)
 
     return frame

@@ -73,28 +73,57 @@ class WebcamWidget(ctk.CTkFrame):
         small_frame = cv2.resize(frame, (0, 0), fx=(1/self.cv_scaler), fy=(1/self.cv_scaler))
         rgb_small_frame = cv2.cvtColor(small_frame, cv2.COLOR_BGR2RGB)
         
-        # Encontrar rostros y sus encodings
-        face_locations = face_recognition.face_locations(rgb_small_frame)
-        face_encodings = face_recognition.face_encodings(rgb_small_frame, face_locations)
+        # Encontrar rostros y sus encodings - usar modelo consistente con training
+        face_locations = face_recognition.face_locations(rgb_small_frame, model="hog")
+        face_encodings = face_recognition.face_encodings(rgb_small_frame, face_locations, model="large")
         
         face_names = []
+        # Tolerancia más estricta para reducir falsos positivos
+        tolerance = 0.45  # Más estricto que el default (0.6)
+        
         for face_encoding in face_encodings:
-            # Comparar con rostros conocidos
-            matches = face_recognition.compare_faces(self.known_face_encodings, face_encoding)
-            name = "Desconocido"
-            
-            # Usar el rostro con menor distancia
+            # Calcular distancias a todos los rostros conocidos
             face_distances = face_recognition.face_distance(self.known_face_encodings, face_encoding)
+            
+            # Encontrar la distancia mínima
+            min_distance = np.min(face_distances)
             best_match_index = np.argmin(face_distances)
-            if matches[best_match_index]:
-                name = self.known_face_names[best_match_index]
-            face_names.append(name)
+            
+            name = "Desconocido"
+            confidence = 0.0
+            
+            # Solo asignar nombre si la distancia está dentro de la tolerancia
+            if min_distance <= tolerance:
+                # Verificación adicional: comprobar que hay múltiples encodings que coinciden
+                matches = face_recognition.compare_faces(self.known_face_encodings, face_encoding, tolerance=tolerance)
+                
+                if matches[best_match_index]:
+                    candidate_name = self.known_face_names[best_match_index]
+                    
+                    # Contar cuántos encodings de esta persona coinciden
+                    same_person_indices = [i for i, n in enumerate(self.known_face_names) if n == candidate_name]
+                    same_person_matches = [matches[i] for i in same_person_indices]
+                    match_ratio = sum(same_person_matches) / len(same_person_matches)
+                    
+                    # Requerir que al menos 50% de los encodings de la persona coincidan
+                    if match_ratio >= 0.5:
+                        name = candidate_name
+                        confidence = (1 - min_distance) * 100  # Convertir a porcentaje de confianza
+                        print(f"[DEBUG] Reconocido: {name} (Confianza: {confidence:.1f}%, Distancia: {min_distance:.3f}, Ratio: {match_ratio:.2f})")
+                    else:
+                        print(f"[DEBUG] Rechazado: {candidate_name} (Ratio muy bajo: {match_ratio:.2f})")
+                else:
+                    print(f"[DEBUG] Rechazado por tolerancia (Distancia: {min_distance:.3f} > {tolerance})")
+            else:
+                print(f"[DEBUG] Rostro desconocido (Distancia mínima: {min_distance:.3f} > {tolerance})")
+            
+            face_names.append((name, confidence))
         
         return frame, list(zip(face_locations, face_names))
 
     def draw_face_boxes(self, frame, face_data):
         """Dibujar cajas y nombres en los rostros detectados"""
-        for (top, right, bottom, left), name in face_data:
+        for (top, right, bottom, left), (name, confidence) in face_data:
             # Escalar coordenadas de vuelta al tamaño original
             top *= self.cv_scaler
             right *= self.cv_scaler
@@ -107,11 +136,15 @@ class WebcamWidget(ctk.CTkFrame):
                 hex_color = self.primary_color.lstrip('#')
                 r, g, b = tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
                 color = (b, g, r)  # BGR para OpenCV
+                
+                # Mostrar nombre con confianza si está identificado
+                display_text = f"{name} ({confidence:.0f}%)"
             else:
                 # Convertir unknown_color de hex a BGR
                 hex_color = self.unknown_color.lstrip('#')
                 r, g, b = tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
                 color = (b, g, r)  # BGR para OpenCV
+                display_text = name
             
             # Convertir text_color de hex a BGR
             text_hex = self.text_color.lstrip('#')
@@ -123,9 +156,9 @@ class WebcamWidget(ctk.CTkFrame):
             
             # Calcular dimensiones del texto para centrar mejor
             font = cv2.FONT_HERSHEY_SIMPLEX
-            font_scale = 0.8
+            font_scale = 0.7
             thickness = 2
-            (text_width, text_height), baseline = cv2.getTextSize(name, font, font_scale, thickness)
+            (text_width, text_height), baseline = cv2.getTextSize(display_text, font, font_scale, thickness)
             
             # Crear rectángulo para el fondo del texto más elegante
             label_height = text_height + baseline + 10
@@ -135,7 +168,7 @@ class WebcamWidget(ctk.CTkFrame):
             cv2.rectangle(frame, (left, bottom - label_height), (left + text_width + 10, bottom), color, 2)
             
             # Dibujar el texto con mejor posicionamiento
-            cv2.putText(frame, name, (left + 5, bottom - baseline - 5), font, font_scale, text_color, thickness, cv2.LINE_AA)
+            cv2.putText(frame, display_text, (left + 5, bottom - baseline - 5), font, font_scale, text_color, thickness, cv2.LINE_AA)
         
         return frame
 
