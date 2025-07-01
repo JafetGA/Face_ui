@@ -13,6 +13,7 @@ class WebcamUI:
         self.disabled_color = "#174d55"
         self.text_color = "#0f172a"
         self.bg_color = "#020617"
+        self.unknown_color = "#b71c1c"  # Color para rostros desconocidos
 
         # Crear ventana principal
         self.root = ctk.CTk()
@@ -55,7 +56,10 @@ class WebcamUI:
         self.webcam_widget = WebcamWidget(
             self.main_frame,
             width=640,
-            height=480
+            height=480,
+            primary_color=self.primary_color,
+            unknown_color=self.unknown_color,
+            text_color=self.text_color
         )
         self.webcam_widget.pack(pady=20, padx=20)
 
@@ -74,6 +78,21 @@ class WebcamUI:
             stop_callback=self.webcam_widget.stop_camera,
             reload_callback=self.webcam_widget.reload_face_encodings
         )
+
+        # Iniciar la cámara automáticamente
+        self.auto_start_camera()
+
+    def auto_start_camera(self):
+        """Iniciar cámara automáticamente al arrancar la aplicación"""
+        # Establecer estado inicial de botones (cámara iniciada)
+        self.control_buttons.set_camera_started()
+        
+        # Intentar iniciar la cámara
+        success = self.webcam_widget.start_camera()
+        
+        # Si falla, revertir estado de botones
+        if not success:
+            self.control_buttons.set_camera_stopped()
 
     def on_closing(self):
         """Manejar cierre de aplicación"""

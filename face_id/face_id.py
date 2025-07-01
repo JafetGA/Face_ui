@@ -6,7 +6,7 @@ import pickle
 
 # Load pre-trained face encodings
 print("[INFO] loading encodings...")
-with open("../src/encodings/encodings.pickle", "rb") as f:
+with open("encodings.pickle", "rb") as f:
     data = pickle.loads(f.read())
 known_face_encodings = data["encodings"]
 known_face_names = data["names"]
@@ -24,7 +24,7 @@ cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
 
 # Initialize our variables
-cv_scaler = 10  # this has to be a whole number
+cv_scaler = 4  # this has to be a whole number
 
 face_locations = []
 face_encodings = []

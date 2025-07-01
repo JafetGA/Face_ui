@@ -62,31 +62,33 @@ class ControlButtonsWidget(ctk.CTkFrame):
         self.grid_columnconfigure(1, weight=1)
         self.grid_columnconfigure(2, weight=1)
 
-        # Botón de iniciar con icono
+        # Botón de iniciar con icono (inicialmente deshabilitado)
         self.start_button = ctk.CTkButton(
             self,
             text="",
             image=self.play_icon,
             font=ctk.CTkFont(size=12, weight="bold"),
-            fg_color=self.primary_color,
+            fg_color=self.disabled_color,
             hover_color="#1e8e7f",
             text_color=self.text_color,
             width=50, height=50,
-            command=self._on_start_click
+            command=self._on_start_click,
+            state="disabled"
         )
         self.start_button.grid(row=0, column=0, padx=10, pady=5)
 
-        # Botón de detener con icono
+        # Botón de detener con icono (inicialmente habilitado)
         self.stop_button = ctk.CTkButton(
             self,
             text="",
             image=self.stop_icon,
             font=ctk.CTkFont(size=12, weight="bold"),
-            fg_color=self.disabled_color,
+            fg_color=self.primary_color,
+            hover_color="#1e8e7f",
             text_color=self.text_color,
             width=50, height=50,
             command=self._on_stop_click,
-            state="disabled"
+            state="normal"
         )
         self.stop_button.grid(row=0, column=1, padx=10, pady=5)
 
@@ -116,6 +118,9 @@ class ControlButtonsWidget(ctk.CTkFrame):
             success = self.start_callback()
             if success:
                 self.set_camera_started()
+            else:
+                # Si falla al iniciar, mantener estado actual
+                self.set_camera_stopped()
 
     def _on_stop_click(self):
         """Callback interno para botón stop"""
