@@ -6,7 +6,7 @@ import pickle
 
 # Load pre-trained face encodings
 print("[INFO] loading encodings...")
-with open("encodings.pickle", "rb") as f:
+with open("../src/encodings/encodings.pickle", "rb") as f:
     data = pickle.loads(f.read())
 known_face_encodings = data["encodings"]
 known_face_names = data["names"]

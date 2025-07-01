@@ -19,11 +19,11 @@ class LogoWidget(ctk.CTkLabel):
         """Cargar logo desde archivo SVG o imagen"""
         try:
             if image_path.lower().endswith('.svg'):
-                png_data = cairosvg.svg2png(url=image_path, output_width=200, output_height=200)
+                png_data = cairosvg.svg2png(url=image_path, output_width=250, output_height=250)
                 pil_image = Image.open(io.BytesIO(png_data))
             else:
                 pil_image = Image.open(image_path)
-                pil_image.thumbnail((200, 200), Image.Resampling.LANCZOS)
+                pil_image.thumbnail((250, 250), Image.Resampling.LANCZOS)
 
             ctk_image = ctk.CTkImage(light_image=pil_image, dark_image=pil_image, size=pil_image.size)
             self.configure(image=ctk_image, text="")

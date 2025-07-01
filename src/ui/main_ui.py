@@ -71,7 +71,8 @@ class WebcamUI:
         # Configurar callbacks de los botones
         self.control_buttons.set_callbacks(
             start_callback=self.webcam_widget.start_camera,
-            stop_callback=self.webcam_widget.stop_camera
+            stop_callback=self.webcam_widget.stop_camera,
+            reload_callback=self.webcam_widget.reload_face_encodings
         )
 
     def on_closing(self):
