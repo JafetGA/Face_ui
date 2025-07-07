@@ -76,7 +76,8 @@ class WebcamUI:
         self.control_buttons.set_callbacks(
             start_callback=self.webcam_widget.start_camera,
             stop_callback=self.webcam_widget.stop_camera,
-            reload_callback=self.webcam_widget.reload_face_encodings
+            reload_callback=self.webcam_widget.reload_face_encodings,
+            download_callback=self.webcam_widget.download_and_reload_encodings
         )
 
         # Iniciar la cámara automáticamente

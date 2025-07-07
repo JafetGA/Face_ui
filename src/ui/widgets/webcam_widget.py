@@ -49,6 +49,10 @@ class WebcamWidget(ctk.CTkFrame):
             self.text_color
         )
 
+    def download_and_reload_encodings(self):
+        """Descargar encodings desde la API y recargarlos"""
+        return self.face_recognition.download_and_reload_encodings()
+
     def start_camera(self):
         """Iniciar cámara"""
         if not self.running:
@@ -57,7 +61,7 @@ class WebcamWidget(ctk.CTkFrame):
                 self._clear_video_display()
                 self.video_label.configure(text="Iniciando cámara...")
                 
-                self.cap = cv2.VideoCapture(0)
+                self.cap = cv2.VideoCapture(1)
                 if self.cap.isOpened():
                     # Verificar que realmente puede leer frames
                     ret, _ = self.cap.read()

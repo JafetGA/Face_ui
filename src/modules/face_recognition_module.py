@@ -154,3 +154,34 @@ class FaceRecognitionModule:
     def get_face_count(self):
         """Obtener número de rostros conocidos"""
         return len(self.known_face_encodings)
+
+    def download_and_reload_encodings(self, api_url="http://localhost:8000/api/face_attendance/v1/download"):
+        """
+        Descarga nuevos encodings desde la API y los recarga
+        
+        Args:
+            api_url (str): URL de la API para descargar los encodings
+            
+        Returns:
+            bool: True si la descarga y recarga fueron exitosas, False en caso contrario
+        """
+        try:
+            # Importar la función de descarga
+            from src.api.download_encodings import download_encodings_from_api
+            
+            # Descargar los nuevos encodings
+            print("[INFO] Descargando encodings desde la API...")
+            if download_encodings_from_api(api_url):
+                # Recargar los encodings
+                print("[INFO] Recargando encodings...")
+                return self.reload_face_encodings()
+            else:
+                print("[ERROR] No se pudieron descargar los encodings desde la API")
+                return False
+                
+        except ImportError as e:
+            print(f"[ERROR] Error al importar módulo de descarga: {e}")
+            return False
+        except Exception as e:
+            print(f"[ERROR] Error inesperado al descargar y recargar encodings: {e}")
+            return False

@@ -15,6 +15,7 @@ class ControlButtonsWidget(ctk.CTkFrame):
         self.start_callback = None
         self.stop_callback = None
         self.reload_callback = None
+        self.download_callback = None
 
         # Animation variables
         self.reload_animation_running = False
@@ -61,6 +62,7 @@ class ControlButtonsWidget(ctk.CTkFrame):
         self.grid_columnconfigure(0, weight=1)
         self.grid_columnconfigure(1, weight=1)
         self.grid_columnconfigure(2, weight=1)
+        self.grid_columnconfigure(3, weight=1)
 
         # Botón de iniciar con icono (inicialmente deshabilitado)
         self.start_button = ctk.CTkButton(
@@ -106,11 +108,25 @@ class ControlButtonsWidget(ctk.CTkFrame):
         )
         self.reload_button.grid(row=0, column=2, padx=10, pady=5)
 
-    def set_callbacks(self, start_callback, stop_callback, reload_callback=None):
+        # Botón de descarga desde API
+        self.download_button = ctk.CTkButton(
+            self,
+            text="📥",
+            font=ctk.CTkFont(size=18, weight="bold"),
+            fg_color="#0d47a1",
+            hover_color="#1565c0",
+            text_color="white",
+            width=50, height=50,
+            command=self._on_download_click
+        )
+        self.download_button.grid(row=0, column=3, padx=10, pady=5)
+
+    def set_callbacks(self, start_callback, stop_callback, reload_callback=None, download_callback=None):
         """Establecer callbacks para los botones"""
         self.start_callback = start_callback
         self.stop_callback = stop_callback
         self.reload_callback = reload_callback
+        self.download_callback = download_callback
 
     def _on_start_click(self):
         """Callback interno para botón start"""
@@ -135,6 +151,22 @@ class ControlButtonsWidget(ctk.CTkFrame):
             if success:
                 self._animate_reload_success()
 
+    def _on_download_click(self):
+        """Callback interno para botón download"""
+        if self.download_callback and not self.reload_animation_running:
+            # Deshabilitar botón durante la descarga
+            self.download_button.configure(state="disabled")
+            self.download_button.configure(text="📥...")
+            
+            # Ejecutar callback de descarga
+            success = self.download_callback()
+            
+            # Animar resultado
+            if success:
+                self._animate_download_success()
+            else:
+                self._animate_download_error()
+
     def _animate_reload_success(self):
         """Animar el botón de reload cuando es exitoso"""
         self.reload_animation_running = True
@@ -146,6 +178,36 @@ class ControlButtonsWidget(ctk.CTkFrame):
             )
         
         self.after(1000, self._start_color_transition)
+
+    def _animate_download_success(self):
+        """Animar el botón de download cuando es exitoso"""
+        # Cambiar a color de éxito
+        self.download_button.configure(
+            fg_color="#4caf50",
+            text="✅"
+        )
+        
+        # Restaurar después de 2 segundos
+        self.after(2000, self._restore_download_button)
+
+    def _animate_download_error(self):
+        """Animar el botón de download cuando falla"""
+        # Cambiar a color de error
+        self.download_button.configure(
+            fg_color="#f44336",
+            text="❌"
+        )
+        
+        # Restaurar después de 2 segundos
+        self.after(2000, self._restore_download_button)
+
+    def _restore_download_button(self):
+        """Restaurar botón de download a su estado original"""
+        self.download_button.configure(
+            fg_color="#0d47a1",
+            text="📥",
+            state="normal"
+        )
 
     def _start_color_transition(self):
         """Iniciar transición gradual de color"""
