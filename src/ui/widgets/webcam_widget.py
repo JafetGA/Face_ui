@@ -1,11 +1,12 @@
 import customtkinter as ctk
 import cv2
+import time
 from PIL import Image
 from src.modules.face_recognition_module import FaceRecognitionModule
 
 
 class WebcamWidget(ctk.CTkFrame):
-    def __init__(self, parent, width=640, height=480, primary_color="#26a69a", unknown_color="#b71c1c", text_color="#0f172a", **kwargs):
+    def __init__(self, parent, width=640, height=480, primary_color="#26a69a", unknown_color="#b71c1c", text_color="#0f172a", access_status_widget=None, **kwargs):
         super().__init__(parent, width=width, height=height, fg_color="#1a1a1a", corner_radius=10, **kwargs)
         self.pack_propagate(False)
 
@@ -13,6 +14,13 @@ class WebcamWidget(ctk.CTkFrame):
         self.cap = None
         self.running = False
         self.current_image = None  # Mantener referencia a la imagen actual
+        
+        # Widget de estado de acceso
+        self.access_status_widget = access_status_widget
+        
+        # Variable para controlar el tiempo del estado
+        self.last_detection_time = 0
+        self.status_timeout = 3000  # 3 segundos para limpiar el estado
         
         # Instancia del módulo de reconocimiento facial
         self.face_recognition = FaceRecognitionModule()
@@ -136,6 +144,10 @@ class WebcamWidget(ctk.CTkFrame):
             self.cap.release()
             self.cap = None
 
+        # Limpiar estado de acceso
+        if self.access_status_widget:
+            self.access_status_widget.set_waiting_status()
+
         # Limpiar estado de forma segura
         try:
             self._clear_video_display()
@@ -159,6 +171,9 @@ class WebcamWidget(ctk.CTkFrame):
                 
                 # Procesar reconocimiento facial
                 processed_frame, face_data = self.process_face_recognition(frame)
+                
+                # Actualizar estado de acceso basado en detecciones
+                self.update_access_status(face_data)
                 
                 # Dibujar cajas y nombres en rostros detectados
                 display_frame = self.draw_face_boxes(processed_frame, face_data)
@@ -199,4 +214,46 @@ class WebcamWidget(ctk.CTkFrame):
         if self.cap:
             self.cap.release()
             self.cap = None
+        
+        # Limpiar estado de acceso
+        if self.access_status_widget:
+            self.access_status_widget.set_waiting_status()
+            
         cv2.destroyAllWindows()
+
+    def update_access_status(self, face_data):
+        """Actualizar el estado de acceso basado en las detecciones de rostros"""
+        if not self.access_status_widget:
+            return
+        
+        current_time = time.time() * 1000  # Convertir a milisegundos
+        
+        if face_data:
+            # Hay rostros detectados
+            recognized_faces = []
+            unknown_faces = []
+            
+            for (location, (name, confidence)) in face_data:
+                if name != "Desconocido":
+                    recognized_faces.append(name)
+                else:
+                    unknown_faces.append(name)
+            
+            if recognized_faces:
+                # Hay al menos un rostro reconocido - ACCESO PERMITIDO
+                person_name = recognized_faces[0]  # Mostrar el primer rostro reconocido
+                self.access_status_widget.set_access_granted(person_name)
+                self.last_detection_time = current_time
+            elif unknown_faces:
+                # Solo rostros desconocidos - ACCESO DENEGADO
+                self.access_status_widget.set_access_denied()
+                self.last_detection_time = current_time
+        else:
+            # No hay rostros detectados - verificar si limpiar el estado
+            if current_time - self.last_detection_time > self.status_timeout:
+                self.access_status_widget.set_waiting_status()
+
+    def clear_access_status_after_delay(self):
+        """Limpiar el estado de acceso después de un retraso"""
+        if self.access_status_widget:
+            self.access_status_widget.set_waiting_status()

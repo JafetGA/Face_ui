@@ -1,5 +1,5 @@
 import customtkinter as ctk
-from src.ui.widgets import LogoWidget, ClockWidget, WebcamWidget, ControlButtonsWidget
+from src.ui.widgets import LogoWidget, ClockWidget, AccessStatusWidget, WebcamControlWidget
 
 
 class WebcamUI:
@@ -45,40 +45,32 @@ class WebcamUI:
         )
         self.logo_widget.place(x=0, y=0)
 
+        # Widget de estado de acceso (arriba del reloj)
+        self.access_status_widget = AccessStatusWidget(
+            self.main_frame,
+            primary_color=self.primary_color,
+            denied_color=self.unknown_color
+        )
+        self.access_status_widget.pack(pady=(80, 20))
+
         # Widget de reloj centrado en la parte superior
         self.clock_widget = ClockWidget(
             self.main_frame,
             primary_color=self.primary_color
         )
-        self.clock_widget.pack(pady=(80, 30))
+        self.clock_widget.pack(pady=(0, 20))
 
-        # Widget de webcam
-        self.webcam_widget = WebcamWidget(
+        # Widget combinado de webcam y controles
+        self.webcam_control_widget = WebcamControlWidget(
             self.main_frame,
             width=640,
             height=480,
             primary_color=self.primary_color,
             unknown_color=self.unknown_color,
-            text_color=self.text_color
+            text_color=self.text_color,
+            access_status_widget=self.access_status_widget
         )
-        self.webcam_widget.pack(pady=20, padx=20)
-
-        # Widget de botones de control
-        self.control_buttons = ControlButtonsWidget(
-            self.main_frame,
-            primary_color=self.primary_color,
-            disabled_color=self.disabled_color,
-            text_color=self.text_color
-        )
-        self.control_buttons.pack(pady=20)
-
-        # Configurar callbacks de los botones
-        self.control_buttons.set_callbacks(
-            start_callback=self.webcam_widget.start_camera,
-            stop_callback=self.webcam_widget.stop_camera,
-            reload_callback=self.webcam_widget.reload_face_encodings,
-            download_callback=self.webcam_widget.download_and_reload_encodings
-        )
+        self.webcam_control_widget.pack(pady=20, padx=20)
 
         # Iniciar la cámara automáticamente
         self.auto_start_camera()
@@ -86,18 +78,18 @@ class WebcamUI:
     def auto_start_camera(self):
         """Iniciar cámara automáticamente al arrancar la aplicación"""
         # Establecer estado inicial de botones (cámara iniciada)
-        self.control_buttons.set_camera_started()
+        self.webcam_control_widget.set_camera_started()
         
         # Intentar iniciar la cámara
-        success = self.webcam_widget.start_camera()
+        success = self.webcam_control_widget.start_camera()
         
         # Si falla, revertir estado de botones
         if not success:
-            self.control_buttons.set_camera_stopped()
+            self.webcam_control_widget.set_camera_stopped()
 
     def on_closing(self):
         """Manejar cierre de aplicación"""
-        self.webcam_widget.cleanup()
+        self.webcam_control_widget.cleanup()
         self.root.destroy()
 
     def run(self):

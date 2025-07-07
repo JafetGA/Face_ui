@@ -5,7 +5,7 @@ import os
 
 class ControlButtonsWidget(ctk.CTkFrame):
     def __init__(self, parent, primary_color="#26a69a", disabled_color="#174d55", text_color="#0f172a", **kwargs):
-        super().__init__(parent, fg_color="transparent", **kwargs)
+        super().__init__(parent, fg_color="#1a1a1a", corner_radius=10, height=100, **kwargs)
 
         self.primary_color = primary_color
         self.disabled_color = disabled_color
@@ -58,15 +58,22 @@ class ControlButtonsWidget(ctk.CTkFrame):
 
     def create_buttons(self):
         """Crear botones de control"""
-        # Configurar grid para mejor distribución
-        self.grid_columnconfigure(0, weight=1)
-        self.grid_columnconfigure(1, weight=1)
-        self.grid_columnconfigure(2, weight=1)
-        self.grid_columnconfigure(3, weight=1)
+        # Prevenir que el widget se redimensione automáticamente
+        self.pack_propagate(False)
+        
+        # Crear un frame interno para los botones
+        button_frame = ctk.CTkFrame(self, fg_color="transparent")
+        button_frame.pack(expand=True, fill="both", pady=10)
+        
+        # Configurar grid para mejor distribución EN EL FRAME INTERNO
+        button_frame.grid_columnconfigure(0, weight=1)
+        button_frame.grid_columnconfigure(1, weight=1)
+        button_frame.grid_columnconfigure(2, weight=1)
+        button_frame.grid_columnconfigure(3, weight=1)
 
         # Botón de iniciar con icono (inicialmente deshabilitado)
         self.start_button = ctk.CTkButton(
-            self,
+            button_frame,
             text="",
             image=self.play_icon,
             font=ctk.CTkFont(size=12, weight="bold"),
@@ -81,7 +88,7 @@ class ControlButtonsWidget(ctk.CTkFrame):
 
         # Botón de detener con icono (inicialmente habilitado)
         self.stop_button = ctk.CTkButton(
-            self,
+            button_frame,
             text="",
             image=self.stop_icon,
             font=ctk.CTkFont(size=12, weight="bold"),
@@ -96,7 +103,7 @@ class ControlButtonsWidget(ctk.CTkFrame):
 
         # Botón de recarga con ícono
         self.reload_button = ctk.CTkButton(
-            self,
+            button_frame,
             text="",
             image=self.reload_icon,
             font=ctk.CTkFont(size=14, weight="bold"),
@@ -110,7 +117,7 @@ class ControlButtonsWidget(ctk.CTkFrame):
 
         # Botón de descarga desde API
         self.download_button = ctk.CTkButton(
-            self,
+            button_frame,
             text="📥",
             font=ctk.CTkFont(size=18, weight="bold"),
             fg_color="#0d47a1",
