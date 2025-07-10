@@ -69,7 +69,7 @@ class WebcamWidget(ctk.CTkFrame):
                 self._clear_video_display()
                 self.video_label.configure(text="Iniciando cámara...")
                 
-                self.cap = cv2.VideoCapture(1)
+                self.cap = cv2.VideoCapture(0)
                 if self.cap.isOpened():
                     # Verificar que realmente puede leer frames
                     ret, _ = self.cap.read()
