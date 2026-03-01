@@ -3,17 +3,84 @@ import numpy as np
 import pickle
 import face_recognition
 import os
+import serial
+import time
 
 
 class FaceRecognitionModule:
-    def __init__(self):
+    def __init__(self, arduino_port='COM5', baud_rate=9600):
         self.known_face_encodings = []
         self.known_face_names = []
         self.cv_scaler = 4  # Reducir para mejor rendimiento
         self.tolerance = 0.45  # Tolerancia más estricta para reducir falsos positivos
         
+        # Configuración Arduino
+        self.arduino = None
+        self.arduino_connected = False
+        self.last_detection_time = 0
+        self.detection_cooldown = 2.0  # Segundos entre detecciones para evitar spam
+        
         # Cargar encodings al inicializar
         self.load_face_encodings()
+        
+        # Conectar con Arduino
+        self.connect_arduino(arduino_port, baud_rate)
+
+    def connect_arduino(self, port, baud_rate):
+        """Conectar con Arduino"""
+        try:
+            self.arduino = serial.Serial(port, baud_rate, timeout=1)
+            time.sleep(2)  # Esperar que Arduino se inicialice
+            self.arduino_connected = True
+            print(f"[INFO] Arduino conectado en {port}")
+            
+            # Enviar señal de prueba
+            self.send_arduino_signal('TEST')
+            
+        except serial.SerialException as e:
+            print(f"[WARNING] No se pudo conectar con Arduino en {port}: {e}")
+            print("[INFO] El sistema funcionará sin control de LEDs")
+            self.arduino_connected = False
+        except Exception as e:
+            print(f"[ERROR] Error inesperado al conectar Arduino: {e}")
+            self.arduino_connected = False
+
+    def send_arduino_signal(self, signal):
+        """Enviar señal al Arduino"""
+        if not self.arduino_connected:
+            return False
+            
+        try:
+            # Enviar señal como string terminado en newline
+            self.arduino.write(f"{signal}\n".encode())
+            print(f"[DEBUG] Señal enviada a Arduino: {signal}")
+            return True
+        except Exception as e:
+            print(f"[ERROR] Error enviando señal a Arduino: {e}")
+            return False
+
+    def control_leds(self, face_detected, is_known=False):
+        """Controlar LEDs basado en detección facial"""
+        current_time = time.time()
+        
+        # Verificar cooldown para evitar spam de señales
+        if current_time - self.last_detection_time < self.detection_cooldown:
+            return
+            
+        if face_detected:
+            if is_known:
+                # Persona conocida - LED verde (pin 11)
+                self.send_arduino_signal('KNOWN')
+                print("[INFO] LED verde encendido - Persona conocida")
+            else:
+                # Persona desconocida - LED rojo (pin 10)
+                self.send_arduino_signal('UNKNOWN')
+                print("[INFO] LED rojo encendido - Persona desconocida")
+                
+            self.last_detection_time = current_time
+        else:
+            # No hay detección - apagar LEDs
+            self.send_arduino_signal('OFF')
 
     def load_face_encodings(self):
         """Cargar encodings de rostros conocidos"""
@@ -55,6 +122,7 @@ class FaceRecognitionModule:
         face_encodings = face_recognition.face_encodings(rgb_small_frame, face_locations, model="large")
         
         face_names = []
+        known_person_detected = False
         
         for face_encoding in face_encodings:
             # Calcular distancias a todos los rostros conocidos
@@ -84,6 +152,7 @@ class FaceRecognitionModule:
                     if match_ratio >= 0.5:
                         name = candidate_name
                         confidence = (1 - min_distance) * 100  # Convertir a porcentaje de confianza
+                        known_person_detected = True
                         print(f"[DEBUG] Reconocido: {name} (Confianza: {confidence:.1f}%, Distancia: {min_distance:.3f}, Ratio: {match_ratio:.2f})")
                     else:
                         print(f"[DEBUG] Rechazado: {candidate_name} (Ratio muy bajo: {match_ratio:.2f})")
@@ -93,6 +162,12 @@ class FaceRecognitionModule:
                 print(f"[DEBUG] Rostro desconocido (Distancia mínima: {min_distance:.3f} > {self.tolerance})")
             
             face_names.append((name, confidence))
+        
+        # Controlar LEDs basado en detección
+        if len(face_locations) > 0:
+            self.control_leds(True, known_person_detected)
+        else:
+            self.control_leds(False)
         
         return frame, list(zip(face_locations, face_names))
 
@@ -185,3 +260,25 @@ class FaceRecognitionModule:
         except Exception as e:
             print(f"[ERROR] Error inesperado al descargar y recargar encodings: {e}")
             return False
+
+    def close_arduino_connection(self):
+        """Cerrar conexión con Arduino"""
+        if self.arduino_connected and self.arduino:
+            try:
+                self.send_arduino_signal('OFF')  # Apagar LEDs antes de cerrar
+                self.arduino.close()
+                print("[INFO] Conexión con Arduino cerrada")
+            except Exception as e:
+                print(f"[ERROR] Error cerrando conexión Arduino: {e}")
+
+    def __del__(self):
+        """Destructor para cerrar conexión Arduino"""
+        self.close_arduino_connection()
+
+
+# Ejemplo de configuración en tu WebcamUI:
+# 
+# Modifica tu WebcamUI para crear la instancia así:
+# self.face_module = FaceRecognitionModule(arduino_port='COM3', baud_rate=9600)
+#
+# Y asegúrate de llamar face_module.close_arduino_connection() al cerrar la aplicación

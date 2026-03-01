@@ -420,6 +420,7 @@ class WebcamControlWidget(ctk.CTkFrame):
     def cleanup(self):
         """Limpiar recursos al cerrar"""
         self.running = False
+        self.face_recognition.close_arduino_connection()
         if self.cap:
             self.cap.release()
             self.cap = None
